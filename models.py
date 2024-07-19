@@ -1,0 +1,411 @@
+'''
+This module contains the functions used to crate and train the neural network models
+'''
+
+import numpy as np
+import pandas as pd 
+import tensorflow as tf
+import preprocess_data as prep
+import tensorflow.keras as keras
+from keras.optimizers import Adam
+from tensorflow.keras.activations import gelu
+from tensorflow.keras.layers import LSTM,  Dense, Dropout, Conv1D, Bidirectional
+from tensorflow.keras import regularizers
+from tensorflow.keras.callbacks import TensorBoard, EarlyStopping, LearningRateScheduler
+from sklearn.model_selection import KFold
+
+def build_baseline(hidden=8, features=100, predict_n=4, look_back=4, loss ='msle', optimizer = 'adam',  stateful = False, batch_size = 1,
+                   activation = 'relu'):
+    
+    '''
+    Baseline model with two LSTM layers
+    '''
+
+    inp = keras.Input(
+        #shape=(look_back, features),
+        batch_shape=(batch_size, look_back, features)
+    )
+
+    x = LSTM(
+        hidden,
+        input_shape=(look_back, features),
+        stateful = stateful,
+
+        return_sequences=True,
+    )(inp, training=True)
+
+    x = Dropout(0.2, name='dropout_1')(x, training=True)
+
+    x = LSTM(
+        hidden,
+        input_shape=(look_back, features),
+        stateful = stateful,
+        activation = gelu,
+        return_sequences=False,
+    )(x, training=True)
+
+    x = Dropout(0.2, name='dropout_2')(x, training=True)
+
+
+    out = Dense(
+        predict_n,
+        activation=activation 
+    )(x)
+        #activity_regularizer=regularizers.L2(l2) )(x)
+    model = keras.Model(inp, out)
+
+    model.compile(loss=loss, optimizer=optimizer, metrics=["accuracy", "mape", "mse"])
+    print(model.summary())
+    return model
+
+def build_lstm(hidden=8, features=100, predict_n=4, look_back=4, loss ='msle', optimizer = 'adam',  stateful = False, batch_size = 1,
+                   activation = 'relu'):
+    '''
+    Model with three LSTM layers 
+    '''
+
+    inp = keras.Input(
+        #shape=(look_back, features),
+        batch_shape=(batch_size, look_back, features)
+    )
+
+    x = LSTM(
+        hidden,
+        input_shape=(look_back, features),
+        stateful = stateful,
+
+        return_sequences=True,
+    )(inp, training=True)
+
+    x = Dropout(0.2, name='dropout_1')(x, training=True)
+
+    x = LSTM(
+        hidden,
+        input_shape=(look_back, features),
+        stateful = stateful,
+
+        return_sequences=True,
+    )(x, training=True)
+
+    x = Dropout(0.2, name='dropout_2')(x, training=True)
+
+    x = LSTM(
+        hidden,
+        input_shape=(look_back, features),
+        stateful = stateful,
+        activation = gelu,
+        return_sequences=False,
+    )(x, training=True)
+
+    x = Dropout(0.2, name='dropout_3')(x, training=True)
+
+
+    out = Dense(
+        predict_n,
+        activation=activation
+    )(x)
+        #activity_regularizer=regularizers.L2(l2) )(x)
+    model = keras.Model(inp, out)
+
+    model.compile(loss=loss, optimizer=optimizer, metrics=["accuracy", "mape", "mse"])
+    print(model.summary())
+    return model
+
+
+
+def build_baseline_stat(hidden=8, features=100, predict_n=4, look_back=4, loss ='msle', optimizer = 'adam', batch_size = 1):
+
+    stateful = True
+
+    inp = keras.Input(
+        #shape=(look_back, features),
+        batch_shape=(batch_size, look_back, features)
+    )
+
+    x = LSTM(
+        hidden,
+        #input_shape=(look_back, features),
+        batch_input_shape=(batch_size, look_back, features),
+        stateful = stateful,
+
+        return_sequences=True,
+    )(inp, training=True)
+
+    x = Dropout(0.2, name='dropout_1')(x, training=True)
+
+    x = LSTM(
+        hidden,
+        batch_input_shape=(batch_size, look_back, features),
+        stateful = stateful,
+        activation = gelu,
+        return_sequences=False,
+    )(x, training=True)
+
+    x = Dropout(0.2, name='dropout_2')(x, training=True)
+
+
+    out = Dense(
+        predict_n,
+        activation='sigmoid'
+    )(x)
+        #activity_regularizer=regularizers.L2(l2) )(x)
+    model = keras.Model(inp, out)
+
+    model.compile(loss=loss, optimizer=optimizer, metrics=["accuracy", "mape", "mse"])
+    print(model.summary())
+    return model
+
+
+def build_bi_lstm( hidden=8, features=100, predict_n=4, look_back=4, loss='msle', 
+                  stateful = False, batch_size = 1,  optimizer = Adam(learning_rate=0.001), 
+                  activation = 'relu'):
+    '''
+    Model with one bidirectional lstm layers and two LSTM layers after that
+    '''
+
+    inp = keras.Input(
+        #shape=(look_back, features),
+        batch_shape=(batch_size, look_back, features)
+    )
+
+    x = Bidirectional(LSTM(
+        hidden,
+        input_shape=(look_back, features),
+        stateful=stateful,
+        return_sequences=True,
+        kernel_regularizer=regularizers.L1L2(l1=1e-5, l2=1e-5),
+        #bias_regularizer=regularizers.L2(1e-5),
+        # activity_regularizer=regularizers.L2(1e-5),
+        #activation=f_act_1,
+        dropout=0.1,
+        recurrent_dropout=0,
+        implementation=2,
+        unit_forget_bias=True,
+    ), merge_mode='ave', name='bidirectional_1')(inp, training=True)
+
+    x = Dropout(0.2)(x, training=True)    
+    
+    x = LSTM(
+        hidden,
+        input_shape=(look_back, features),
+        stateful = stateful,
+        activation = gelu,
+        
+        return_sequences=True,
+    )(x, training=True)
+
+    x = Dropout(0.2)(x, training=True) 
+
+    x = LSTM(
+        hidden,
+        input_shape=(look_back, features),
+        stateful = stateful,
+        activation = gelu,
+        
+        return_sequences=False,
+    )(x, training=True)
+
+    x = Dropout(0.2)(x, training=True) 
+
+    #x = BatchNormalization()(x, training = True)
+
+    out = Dense(
+        predict_n,
+        activation = activation
+    )(x)
+       
+    model = keras.Model(inp, out)
+
+    #optimizer = RMSprop(learning_rate=0.001, momentum= 0.5)
+    model.compile(loss=loss, optimizer=optimizer, metrics=["accuracy", "mape", "mse"])
+    print(model.summary())
+    return model
+
+
+def build_conv_lstm( hidden=8, features=100, predict_n=4, look_back=4, loss='msle',
+                  stateful = False, batch_size = 1,  optimizer = Adam(learning_rate=0.001), filters  =32):
+    '''
+    Model with one convolutional layer followed by two lstm layers
+    '''
+    inp = keras.Input(
+        #shape=(look_back, features),
+        batch_shape=(batch_size, look_back, features)
+    )
+
+    x = Conv1D(filters=filters, kernel_size=4,
+                input_shape=(batch_size, look_back, features), padding = 'same')(inp, training=True)
+    #x = ConvLSTM1D(filters=filters, kernel_size=4,
+    #            input_shape=(look_back, features), padding = 'same', return_sequences = True)(inp, training=True)
+
+    x = Dropout(0.2)(x, training=True)
+
+    x = LSTM(
+        hidden,
+        input_shape=(look_back, features),
+        stateful = stateful,
+        activation = gelu,
+
+        return_sequences=True,
+    )(x, training=True)
+
+
+    x = LSTM(
+        hidden,
+        input_shape=(look_back, features),
+        stateful = stateful,
+        activation = gelu,
+
+        return_sequences=False,
+    )(x, training=True)
+
+    x = Dropout(0.2)(x, training=True)
+
+    x = BatchNormalization()(x, training = True)
+
+    out = Dense(
+        predict_n,
+        activation='relu',
+    )(x)
+
+    model = keras.Model(inp, out)
+
+    #optimizer = RMSprop(learning_rate=0.001, momentum= 0.5)
+    model.compile(loss=loss, optimizer=optimizer, metrics=["accuracy", "mape", "mse"])
+    print(model.summary())
+    return model
+    
+
+def custom_loss(y_true, y_pred):
+    '''
+    Test of a custom loss function
+    '''
+    first_log = tf.math.log(y_pred + 1.0)
+    second_log = tf.math.log(y_true + 1.0)
+
+    sum_values = abs(tf.reduce_sum(y_pred) - tf.reduce_sum(y_true))
+
+    peak_mag = abs(tf.reduce_max(y_pred) - tf.reduce_max(y_true))
+
+    peak_pos = abs(tf.argmax(y_pred) - tf.argmax(y_true))
+
+    sum_values = tf.cast(sum_values, tf.float32)
+    peak_mag = tf.cast(peak_mag, tf.float32)
+    peak_pos = tf.cast(peak_pos, tf.float32)
+
+    return tf.reduce_mean(tf.square(first_log - second_log))  + sum_values
+
+
+def train_model_using_cross_val(model, X_train, y_train, n_splits=4, epochs = 5,
+                                verbose = 0,
+                                batch_size = 4, 
+                                monitor = 'val_loss',
+                                min_delta = 0,
+                                patience = 20):
+    '''
+    Function to training the model using cross-validation. The number of split is defined
+    by the n_splits parameter. 
+    '''
+
+    TB_callback = TensorBoard(
+            log_dir="./tensorboard",
+            histogram_freq=0,
+            write_graph=True,
+            write_images=True,
+            update_freq='epoch',
+            # embeddings_freq=10
+        )
+
+    seed = 7
+
+    # Definição das camadas de validação cruzada
+    kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+
+    fold_no = 1
+    for train_index, val_index in kf.split(X_train):
+        
+        print(f'Training fold {fold_no}...')
+
+        # Split data
+        X_train_, X_val_ = X_train[train_index], X_train[val_index]
+        y_train_, y_val_ = y_train[train_index], y_train[val_index]
+
+        hist = model.fit(
+                    X_train_,
+                    y_train_,
+                    batch_size=batch_size,
+                    epochs=epochs,
+                    verbose=verbose,
+                    validation_data=(X_val_, y_val_),
+                    callbacks=[TB_callback, EarlyStopping(monitor=monitor, min_delta=min_delta, patience=patience)]
+                )
+        
+        fold_no = fold_no + 1
+
+    return model 
+
+def make_predictions(model, X_test, norm, dates):
+    '''
+    Função para retornar as previsões do modelo em um DataFrame
+    '''
+    predicted = np.stack([model(X_test, training =True) for i in range(100)], axis=2)
+
+    df_pred = pd.DataFrame(np.percentile(predicted, 50, axis=2))
+    df_pred25 = pd.DataFrame(np.percentile(predicted, 2.5, axis=2))
+    df_pred975 = pd.DataFrame(np.percentile(predicted, 97.5, axis=2))
+
+    df_preds = pd.DataFrame()
+
+    df_preds['lower'] = df_pred25.values.reshape(1,-1)[0]
+    df_preds['preds'] = df_pred.values.reshape(1,-1)[0]
+    df_preds['upper'] = df_pred975.values.reshape(1,-1)[0]
+
+    df_preds = df_preds*norm['casos']
+
+    df_preds['dates'] = pd.to_datetime(dates)
+
+    return df_preds[['dates', 'lower', 'preds', 'upper']]
+
+def sum_regions_predictions(model, df, enso, test_year, columns_to_normalize):
+    '''
+    Função que aplica o modelo para todas as regionais de saúde e retorna a soma,
+    que representa a função para o estado no formato de um dataframe. Não sei se existem formas de
+    otimizar esse loop for. 
+    '''
+    dates = prep.gen_forecast_dates(test_year)
+
+    list_of_enso_indicators = ['enso', 'iod', 'pdo']
+
+    indicators = [item for item in list_of_enso_indicators if item in columns_to_normalize]
+ 
+    predicted = np.zeros((1,52,100))
+    for geo in df.regional_geocode.unique():
+
+        df_w = prep.aggregate_data_clima(df, geo, column = 'regional_geocode')
+
+        data = df_w.merge(enso[indicators], left_index = True, right_index = True)
+
+        data = data.dropna()
+
+        X_train, y_train, norm_values = prep.get_train_data(data.loc[data.year < test_year], columns_to_normalize= columns_to_normalize)
+
+        X_test, y_test = prep.get_test_data(norm_values, data, test_year, columns_to_normalize)
+
+        predicted_ = np.stack([model(X_test.astype(np.float32), training =True) for i in range(100)], axis=2)
+
+        predicted_ = predicted_*norm_values['casos']
+
+        predicted = predicted + predicted_
+
+    df_pred = pd.DataFrame(np.percentile(predicted, 50, axis=2))
+    df_pred25 = pd.DataFrame(np.percentile(predicted, 2.5, axis=2))
+    df_pred975 = pd.DataFrame(np.percentile(predicted, 97.5, axis=2))
+
+    df_preds = pd.DataFrame()
+
+    df_preds['lower'] = df_pred25.values.reshape(1,-1)[0]
+    df_preds['preds'] = df_pred.values.reshape(1,-1)[0]
+    df_preds['upper'] = df_pred975.values.reshape(1,-1)[0]
+
+    df_preds['dates'] = pd.to_datetime(dates)
+
+    return df_preds[['dates', 'lower', 'preds', 'upper']]
