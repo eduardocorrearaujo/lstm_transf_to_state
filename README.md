@@ -2,7 +2,7 @@
 
 This repo contains the models used to forecast the dengue cases in the 2024/2025. 
 
-To use the codes in this repository is necessary to download all the `.csv` made available by the sprint organizers and save it in the data folder. 
+To use the codes in this repository is necessary to download all the `.csv` and `.csv.gz` files made available by the sprint organizers and save it in the data folder. 
 
 ## Data preprocessing 
 
@@ -11,7 +11,7 @@ The functions related to preprocessing the data are saved in the `preprocess_dat
 ## Models
 In the `models.py` module there are functions to apply different NN architectures using LSTM layers. 
 
-## training methodologies
+## Training methodologies
 By now there are implemented two methodologies to forecast the cases in a state:
 
 1. A neural network model that uses as input the dengue cases in weeks 1-52 of the previous 3 years (y-1) to predict weeks 1-52 of the next year. In addition, the model uses as a feature the enso time series over the last year and the average number of cases per epidemiological week over the last few years. Therefore, the model uses 5 features as input.
