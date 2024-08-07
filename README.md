@@ -2,7 +2,7 @@
 
 This repo contains the models used to forecast the dengue cases in the 2024/2025. 
 
-To use the codes in this repository is necessary to download all the `.csv` and `.csv.gz` files made available by the sprint organizers and saved it in the data folder. The other necessaty `.csv` files are already available in the `data` folder.
+To use the codes in this repository is necessary to download all the `.csv` and `.csv.gz` files made available by the sprint organizers and saved it in the data folder. The other necessary `.csv` files are already available in the `data` folder.
 ## Data preprocessing 
 
 The functions related to preprocessing the data are saved in the `preprocess_data.py`. Between then, as the model's output, according to the sprint, should be weeks 41-40, there is a function to redefine this interval as 1-52. Therefore, this function (`transform_epiweek_label`) transforms a label from epidemiological week '201041' into week '201101'. The epiweeks `53` have been removed from the data.
@@ -52,6 +52,20 @@ The table of the predictors is presented below:
 |`iod`          | Time series of the iod indicator                                                                               |
 |`pdo`          | Time series of the pdo indicator                                                                               |
 
+## Setup the environment 
 
+Create the conda env
+```
+conda create -n lstm_infodengue_sprint
+conda activate lstm_infodengue_sprint
+```
 
+Install poetry
+```
+pip install poetry
+```
 
+Install the dependencies
+```
+poetry install
+```
