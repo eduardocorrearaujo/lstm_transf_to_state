@@ -1,4 +1,4 @@
-## Models for sprint 2024/25
+## Models for Infodengue sprint 2024/25
 
 This repo contains the models used to forecast the dengue cases in the 2024/2025. 
 

@@ -8,20 +8,6 @@ df_pop_region = pd.read_csv('./data/pop_regional.csv')
 #episcanner parameters
 df_all_epi = pd.read_csv('./data/episcanner_regional.csv.gz')
 
-# trend and sazonal descriptors: 
-df_s_reg = pd.read_csv('./data/desc_ST_regional.csv', sep = ';')
-
-df_s_reg = df_s_reg.replace({',': '.'}, regex=True)
-
-df_s_reg = df_s_reg.rename(columns = {'ano_e':'year'})
-
-df_s_reg['year'] = df_s_reg['year'] + 1
-
-for col in ['ampsas', 'amptrend', 'ST']: 
-    
-    df_s_reg[col] = df_s_reg[col].astype(float)
-
-
 
 def transform_epiweek_label(ep_label):
   '''

@@ -1765,6 +1765,32 @@ packaging = "*"
 rich = "*"
 
 [[package]]
+name = "keras-multi-head"
+version = "0.29.0"
+description = "A wrapper layer for stacking layers horizontally"
+optional = false
+python-versions = "*"
+files = [
+    {file = "keras-multi-head-0.29.0.tar.gz", hash = "sha256:b0634eed2b77d6b34097a2d7ec49d080d778813218dd61374fd776e21762bbf0"},
+]
+
+[package.dependencies]
+keras-self-attention = "0.51.0"
+
+[[package]]
+name = "keras-self-attention"
+version = "0.51.0"
+description = "Attention mechanism for processing sequential data that considers the context for each timestamp"
+optional = false
+python-versions = "*"
+files = [
+    {file = "keras-self-attention-0.51.0.tar.gz", hash = "sha256:77fce72b12d235722cbbcf7da5b3609b89ee212f5f07352945cc088e850900e9"},
+]
+
+[package.dependencies]
+numpy = "*"
+
+[[package]]
 name = "kiwisolver"
 version = "1.4.5"
 description = "A fast implementation of the Cassowary constraint solver"
@@ -4650,4 +4676,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "2242b9549a7b9b2bb762d042fbbaa8f4dba26c44010b5d23a4a66002b55a39ba"
+content-hash = "c138c56c3b8849ca34981755e040191685b5f56fbdc83f2a873a020781c2378c"
