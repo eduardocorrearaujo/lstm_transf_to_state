@@ -2,35 +2,38 @@ import numpy as np
 import pandas as pd
 import preprocess_data as prep
 from keras.optimizers import Adam
-from models import build_bi_lstm, train_model_using_cross_val, build_baseline, make_predictions 
+from models import build_bi_lstm, train_model_using_cross_val
 from tensorflow.keras.callbacks import TensorBoard, EarlyStopping
+from models import sum_regions_predictions
 from keras.models import load_model
 
-STATE = 'MG'
+# Load the model
+import warnings
+warnings.simplefilter(action='ignore', category=pd.errors.SettingWithCopyWarning)
 
-df = prep.load_cases_data()
-df = df.loc[df.uf == STATE]
+'''
+This script is used to train the model for a specific STATE and forecast the cases on a 
+specific year (TEST_YEAR). The model is trained  with the regional health data before the year selected. 
+'''
+STATE = 'CE'
+TEST_YEAR = 2024
+MODEL_NAME = 'baseline'
+
+df_all = prep.load_cases_data()
 enso = prep.load_enso_data()
 
-model_name = 'baseline'
+df = df_all.loc[df_all.uf == STATE]
 
-for test_year in [2023, 2024]:
-    model = load_model(f'./saved_models/model_{STATE}_{test_year-1}_{model_name}.keras')
+cols_to_norm = ['casos','epiweek', 'enso',  'R0', 'total_cases',
+                          'peak_week', 'perc_geocode'] 
 
-    df_w = prep.aggregate_data(df)
+# save the model
+model = load_model(f'./saved_models/model_{STATE}_{TEST_YEAR-1}_{MODEL_NAME}.keras')
 
-    data = df_w.merge(enso[['enso']], left_index = True, right_index = True)
+df_preds = sum_regions_predictions(model, df, enso, TEST_YEAR, cols_to_norm, episcanner=True, 
+                                                                        clima = False)
+df_preds['adm_1'] = STATE
+df_preds['adm_0'] = 'BR'
+df_preds['adm_2'] = pd.NA
 
-    X_train, y_train, norm_values = prep.get_train_data(data.loc[data.year < test_year])
-
-    X_test, y_test = prep.get_test_data(norm_values,data, year = test_year)
-
-
-    # save preds
-    df_preds = make_predictions(model, X_test, norm_values, dates = prep.gen_forecast_dates(test_year))
-
-    df_preds['adm_1'] = STATE
-    df_preds['adm_0'] = 'BR'
-    df_preds['adm_2'] = pd.NA
-
-    df_preds.to_csv(f'./predictions/preds_{STATE}_{test_year}_{model_name}.csv', index = False)
+df_preds.to_csv(f'./predictions/preds_{STATE}_{TEST_YEAR}_{MODEL_NAME}.csv', index = False)

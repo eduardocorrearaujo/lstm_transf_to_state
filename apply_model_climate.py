@@ -8,6 +8,8 @@ import warnings
 warnings.simplefilter(action='ignore', category=pd.errors.SettingWithCopyWarning)
 
 STATE = 'MG'
+model_name = 'baseline'
+test_year = 2023
 
 state_to_code = {'RJ': 33, 'ES': 32, 'PR': 41, 'CE': 23, 'MA': 21,
                  'MG': 31, 'SC': 42, 'PE': 26, 'PB': 25, 'RN': 24,
@@ -16,8 +18,6 @@ state_to_code = {'RJ': 33, 'ES': 32, 'PR': 41, 'CE': 23, 'MA': 21,
                  'AC': 12, 'MT': 51, 'MS': 50, 'GO': 52, 'TO': 17,
                  'DF': 53, 'BA': 29}
 
-df = prep.load_cases_data()
-df = df.loc[df.uf == STATE]
 df = prep.load_cases_data()
 df = df.loc[df.uf == STATE]
 
@@ -32,24 +32,15 @@ df_end.date = pd.to_datetime(df_end.date)
 df_end.set_index('date', inplace = True)
 
 enso = prep.load_sea_indicators()
-columns_to_normalize = ['casos', 'temp_med', 'temp_amp', 'rel_humid_med', 'precip_tot', 'enso', 'iod', 'pdo']
+columns_to_normalize = ['casos', 'epiweek', 'temp_med', 'temp_amp', 'rel_humid_med', 'precip_tot', 'enso', 'iod', 'pdo',
+                            'R0', 'total_cases',
+                             'peak_week', 'perc_geocode']
 
+model = load_model(f'./saved_models/model_climate_{STATE}_{test_year-1}_{model_name}.keras') 
 
-start_time = time.time()
-model_name = 'bi_lstm'
-for test_year in [2023, 2024]:
-    print(test_year)
+df_preds = sum_regions_predictions(model, df_end, enso, test_year, columns_to_normalize)
+df_preds['adm_1'] = STATE
+df_preds['adm_0'] = 'BR'
+df_preds['adm_2'] = pd.NA
 
-    model = load_model(f'./saved_models/region_model_{STATE}_{test_year-1}_{model_name}.keras') 
-
-    df_preds = sum_regions_predictions(model, df_end, enso, test_year, columns_to_normalize)
-    df_preds['adm_1'] = STATE
-    df_preds['adm_0'] = 'BR'
-    df_preds['adm_2'] = pd.NA
-
-    df_preds.to_csv(f'./predictions/preds_region_{STATE}_{test_year}_{model_name}.csv', index = False)
-
-end_time = time.time()
-
-execution_time = end_time - start_time
-print(f"Tempo de execução: {execution_time} segundos")
+df_preds.to_csv(f'./predictions/preds_climate_{STATE}_{test_year}_{model_name}.csv', index = False)
