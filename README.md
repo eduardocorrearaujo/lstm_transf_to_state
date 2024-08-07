@@ -32,9 +32,7 @@ This methodology is applied in the notebook: `baseline_model.ipynb`. To train mo
 **The best arrangement between models and predictors is plotted in the notebook `best_models_by_state.ipynb` with details for the mandatory states according to the sprint rules: 'AM', 'CE', 'GO', 'PR', and 'MG'. The panel with the predictions is also shown below:**
 ![Results by states](./figures/best_models.png)
 
-**All the predictions 
 Based on the paper available [here](https://arxiv.org/abs/2201.02177) the notebooks `test_grocking_CE.ipynb` and `test_grocking_PR.ipynb` train the models without early stopping and compare their performances. 
-
 
 The table of the predictors is presented below:
 
