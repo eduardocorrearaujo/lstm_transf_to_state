@@ -29,10 +29,10 @@ The training methodology is presented in the diagram below:
 This methodology is applied in the notebook: `baseline_model.ipynb`. To train models for any state using this methodology just run the `train_model.py` and to apply the trained models to gen predictions use `apply_model.py` for the `simple model`. For the models with climate predictors use `train_model_climate.py` and `apply_model_climate.py`. The models trained are saved in the `saved_models` folder and the predictions in the `predictions` folder. To compare the predictions made by different models, take a look at the notebook: `comp_predictions.ipynb`. The `custom_loss.`ipynb` notebook contains a function to apply a custom loss for training the model to improve the performance of the baseline model. This custom loss still must be improved.  
 
 ## Results 
-**The best arrangement between models and predictors is plotted in the notebook `best_models_by_state.ipynb` for the mandatory states according to the sprint rules: 'AM', 'CE', 'GO', 'PR', and 'MG'. The panel with the predictions is also shown below:**
+**The best arrangement between models and predictors is plotted in the notebook `best_models_by_state.ipynb` with details for the mandatory states according to the sprint rules: 'AM', 'CE', 'GO', 'PR', and 'MG'. The panel with the predictions is also shown below:**
 ![Results by states](./figures/best_models.png)
 
-
+**All the predictions 
 Based on the paper available [here](https://arxiv.org/abs/2201.02177) the notebooks `test_grocking_CE.ipynb` and `test_grocking_PR.ipynb` train the models without early stopping and compare their performances. 
 
 
