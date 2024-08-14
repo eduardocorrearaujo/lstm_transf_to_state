@@ -14,7 +14,7 @@ from tensorflow.keras.layers import (LSTM,  Dense, Dropout, Conv1D, Bidirectiona
 
 from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import TensorBoard, EarlyStopping, LearningRateScheduler
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, train_test_split
 
 from keras_multi_head import MultiHeadAttention
 from keras_self_attention import SeqSelfAttention
@@ -642,6 +642,44 @@ def train_model_using_cross_val(model, X_train, y_train, n_splits=4, epochs = 5,
         fold_no = fold_no + 1
 
     return model 
+
+
+def train_model(model, X_train, y_train, epochs = 5,
+                                verbose = 0,
+                                batch_size = 4, 
+                                monitor = 'val_loss',
+                                min_delta = 0,
+                                patience = 20):
+    '''
+    Function to training the model.
+    '''
+
+    lr_scheduler = LearningRateScheduler(schedule)
+
+    TB_callback = TensorBoard(
+            log_dir="./tensorboard",
+            histogram_freq=0,
+            write_graph=True,
+            write_images=True,
+            update_freq='epoch',
+            # embeddings_freq=10
+        )
+
+    
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size = 0.2, random_state=42)
+
+    hist = model.fit(
+                    X_train,
+                    y_train,
+                    batch_size=batch_size,
+                    epochs=epochs,
+                    verbose=verbose,
+                    validation_data=(X_val, y_val),
+                    callbacks=[TB_callback, EarlyStopping(monitor=monitor, min_delta=min_delta, patience=patience)]
+                )
+
+    return model
+
 
 def make_predictions(model, X_test, norm, dates):
     '''

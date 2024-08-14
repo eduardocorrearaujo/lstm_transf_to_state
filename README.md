@@ -3,13 +3,14 @@
 This repo contains the models used to forecast the dengue cases in the 2024/2025. 
 
 To use the codes in this repository is necessary to download all the `.csv` and `.csv.gz` files made available by the sprint organizers and saved it in the data folder. The other necessary `.csv` files are already available in the `data` folder.
+
 ## Data preprocessing 
 
 The functions related to preprocessing the data are saved in the `preprocess_data.py`. Between then, as the model's output, according to the sprint, should be weeks 41-40, there is a function to redefine this interval as 1-52. Therefore, this function (`transform_epiweek_label`) transforms a label from epidemiological week '201041' into week '201101'. The epiweeks `53` have been removed from the data.
 
 The neural network uses as input the dengue cases in transformer epiweeks 1-52 of the year before last (y-2) and the epiweeks 1-37 of the previous year to predict weeks 1-52 of the next year. There were tested multiple predictors that are described in the table below. **The transformed epiweek 37 refers to week 25 (considering the first week in January) it has been done since requested by the sprint rules**
 
-**The normalized data from all the regional health departments will be used as training data. The data of each regional health is normalized considering the data of the regional health.** The preprocessing steps are highlighted in the Figures below. In general the `simple model` had a better performance (with less time training) compared with the `climate model`. 
+**The normalized data from all the regional health departments will be used as training data. In general, models are trained on just one time series, but here, to increase the number of observations, given that our n of years is small for each region, I trained a model for all the regions instead of a model for each region. So, I'm normalizing the data for each region based only on its own data and not using the data for the other regions as a reference.** The preprocessing steps are highlighted in the Figures below. In general the `simple model` had a better performance (with less time training) compared with the `climate model`. 
 
 ![Preprocessing data](./figures/details_preprocessing.png)
 ![Preprocessing data](./figures/preprocess_data.png)
@@ -23,12 +24,13 @@ In the `models.py` module there are functions to apply different NN architecture
 
 The training methodology is presented in the diagram below:
 
-![Trainign methodology](./figures/training_workflow.png)
+![Training methodology](./figures/training_workflow.png)
 
 This methodology is applied in the notebook: `baseline_model.ipynb`. To train models for any state using this methodology just run the `train_model.py` and to apply the trained models to gen predictions use `apply_model.py` for the `simple model`. For the models with climate predictors use `train_model_climate.py` and `apply_model_climate.py`. The models trained are saved in the `saved_models` folder and the predictions in the `predictions` folder. To compare the predictions made by different models, take a look at the notebook: `comp_predictions.ipynb`. The `custom_loss.`ipynb` notebook contains a function to apply a custom loss for training the model to improve the performance of the baseline model. This custom loss still must be improved.  
 
 ## Results 
-**The best arrangement between models and predictors is plotted in the notebook `best_models_by_state.ipynb` with details for the mandatory states according to the sprint rules: 'AM', 'CE', 'GO', 'PR', and 'MG'. The panel with the predictions is also shown below:**
+**The best arrangement between models and predictors is plotted in the notebook `best_models_by_state.ipynb` with details for the mandatory states according to the sprint rules: 'AM', 'CE', 'GO', 'PR', and 'MG'. The panel with the predictions is also shown below. In the panel the legend `baseline` stands for the baseline architecture, `att` stands for the attention architecture, and the `comb_att` stands for the comb models architecture (The architectures are presented in the section models above). The suffix `msle` indicates the model was trained using the MSLE loss error, otherwise, the model was trained using the MSE loss error.**
+
 ![Results by states](./figures/best_models.png)
 
 Based on the paper available [here](https://arxiv.org/abs/2201.02177) the notebooks `test_grocking_CE.ipynb` and `test_grocking_PR.ipynb` train the models without early stopping and compare their performances. 
