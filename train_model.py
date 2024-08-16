@@ -4,7 +4,7 @@ import pandas as pd
 import preprocess_data as prep
 from keras.optimizers import Adam
 from sklearn.model_selection import train_test_split 
-from models import train_model, train_model_using_cross_val, schedule, build_baseline, build_lstm_att, build_comb_lstm_att, sum_regions_predictions 
+from models import train_model, train_model_using_cross_val, schedule, build_baseline, build_comb_lstm_att, build_lstm_att_3, sum_regions_predictions 
 from tensorflow.keras.callbacks import TensorBoard, EarlyStopping, LearningRateScheduler
 
 import warnings
@@ -55,10 +55,10 @@ for STATE in ['AM', 'CE', 'GO', 'PR', 'MG']:
     # parameters of the model
     LOSS = 'mse'
     batch_size = 4
-    model_name = 'baseline'
+    model_name = 'comb_att_n'
 
     #create model
-    model = build_baseline(hidden=64, features=8, predict_n=52, look_back=89, loss=LOSS, 
+    model = build_comb_lstm_att(hidden=64, features=8, predict_n=52, look_back=89, loss=LOSS, 
                     stateful = False, batch_size = batch_size,  optimizer = 'adam', activation = 'relu')
 
     # train model 
@@ -108,27 +108,27 @@ for STATE in ['AM', 'CE', 'GO', 'PR', 'MG']:
 
     #lr_scheduler = LearningRateScheduler(schedule)
 
-    #X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size = 0.2, random_state=42)
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size = 0.2, random_state=42)
 
-    #hist = model.fit(
-    #                X_train,
-    #                y_train,
-    #                batch_size=batch_size,
-    #                epochs=100,
-    #                verbose=0,
-    #                validation_data=(X_val, y_val),
-    #                callbacks=[TB_callback, EarlyStopping(monitor='val_loss',
-    #                                                       min_delta=0, patience=20)]
-    #            )
-    
     hist = model.fit(
-                X_train,
-                y_train,
-                batch_size=4,
-                epochs=100,
-                verbose=0,
-                callbacks=[TB_callback, EarlyStopping(monitor='loss', min_delta=0, patience=20)]
-            )
+                    X_train,
+                    y_train,
+                    batch_size=batch_size,
+                    epochs=100,
+                    verbose=0,
+                    validation_data=(X_val, y_val),
+                    callbacks=[TB_callback, EarlyStopping(monitor='val_loss',
+                                                           min_delta=0, patience=15)]
+                )
+    
+    #hist = model.fit(
+    #            X_train,
+    #            y_train,
+    #            batch_size=4,
+    #            epochs=100,
+    #            verbose=0,
+    #            callbacks=[TB_callback, EarlyStopping(monitor='loss', min_delta=0, patience=20)]
+    #        )
 
     # save the model
     model.save(f'saved_models/model_{STATE}_{TEST_YEAR-1}_{model_name}.keras')

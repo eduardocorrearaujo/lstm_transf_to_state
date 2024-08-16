@@ -10,13 +10,13 @@ import tensorflow.keras as keras
 from keras.optimizers import Adam
 from tensorflow.keras.activations import gelu
 from tensorflow.keras.layers import (LSTM,  Dense, Dropout, Conv1D, Bidirectional, TimeDistributed, Flatten, RepeatVector, Activation,
-                                     Permute, Multiply, Lambda, Reshape, Concatenate)
+                                     Permute, Multiply, Lambda, Reshape, Concatenate, Attention, AdditiveAttention,
+                                     MultiHeadAttention)
 
 from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import TensorBoard, EarlyStopping, LearningRateScheduler
 from sklearn.model_selection import KFold, train_test_split
 
-from keras_multi_head import MultiHeadAttention
 from keras_self_attention import SeqSelfAttention
 
 df_pop_region = pd.read_csv('./data/pop_regional.csv')
@@ -37,6 +37,7 @@ def build_baseline(hidden=8, features=100, predict_n=4, look_back=4, loss ='msle
 
     x = LSTM(
         hidden,
+        #activation= 'sigmoid',
         input_shape=(look_back, features),
         stateful = stateful,
 
@@ -47,6 +48,7 @@ def build_baseline(hidden=8, features=100, predict_n=4, look_back=4, loss ='msle
 
     x = LSTM(
         hidden,
+        #activation='relu',
         input_shape=(look_back, features),
         stateful = stateful,
         activation = gelu,
@@ -54,7 +56,6 @@ def build_baseline(hidden=8, features=100, predict_n=4, look_back=4, loss ='msle
     )(x, training=True)
 
     x = Dropout(0.2, name='dropout_2')(x, training=True)
-
 
     out = Dense(
         predict_n,
@@ -186,11 +187,12 @@ def build_lstm_multi( hidden=8, features=100, predict_n=4, look_back=4, loss='ms
         batch_shape=(batch_size, look_back, features))
     
     att = MultiHeadAttention(
-                        head_num=features,
+                        num_heads =  16, 
+                        key_dim = features,
+                        value_dim = features,
                         name='Multi-Head',
                         #activation='sigmoid',
-                        history_only = True
-                    )(inp, training = True)
+                    )([inp, inp, inp], training = True)
 
     att = Dropout(0.2)(att, training=True) 
 
@@ -226,12 +228,13 @@ def build_lstm_multi_art( hidden=8, features=100, predict_n=4, look_back=4, loss
         #shape=(look_back, features),
         batch_shape=(batch_size, look_back, features))
     
-    att = MultiHeadAttention(
-                        head_num=features,
+    att  = MultiHeadAttention(
+                        num_heads =  2*features, 
+                        key_dim = features,
+                        value_dim = features,
                         name='Multi-Head',
                         #activation='sigmoid',
-                        history_only = True
-                    )(inp, training = True)
+                    )(inp, inp, inp, training = True)
 
     att = Dropout(0.2, )(att, training=True)
 
@@ -266,64 +269,6 @@ def build_lstm_multi_art( hidden=8, features=100, predict_n=4, look_back=4, loss
     return model
 
 
-
-def build_lstm_att_comb( hidden=8, features=100, predict_n=4, look_back=4, loss='msle', stateful = False, batch_size = 1,
-                optimizer = Adam(learning_rate=0.001), activation = 'relu'):
-
-    inp = keras.Input(
-        #shape=(look_back, features),
-        batch_shape=(batch_size, look_back, features))
-    
-    att = SeqSelfAttention(attention_type=SeqSelfAttention.ATTENTION_TYPE_MUL,
-                       kernel_regularizer=keras.regularizers.l2(1e-4),
-                       bias_regularizer=keras.regularizers.l1(1e-4),
-                       attention_regularizer_weight=1e-4,
-                       history_only= True,
-                       name='Attention')(inp, training = True)
-    
-
-    out_att = Dense(
-        hidden,
-        activation='relu'
-    )(att)
-    
-    lstm_1 = LSTM(
-        hidden,
-        input_shape=(look_back, features),
-        stateful = stateful,
-        
-        return_sequences=True,
-    )(inp, training=True)
-
-    lstm_1 = Dropout(0.2)(lstm_1, training=True) 
-
-    concat = Concatenate(axis=-1)([out_att, lstm_1])
-
-    x = LSTM(
-        2*hidden,
-        input_shape=(look_back, features),
-        stateful = stateful,
-        #activation = gelu,
-        return_sequences=False,
-    )(concat, training=True)
-
-    x = Dropout(0.2, )(x, training=True)
-
-    #flatten = tf.keras.layers.Flatten()(concat)
-    
-    out = Dense(
-        predict_n,
-        activation=activation 
-    )(x)
-
-    model = keras.Model(inp, out)
-
-    #optimizer = RMSprop(learning_rate=0.001, momentum= 0.5)
-    model.compile(loss=loss, optimizer=optimizer, metrics=["accuracy", "mape", "mse"])
-    print(model.summary())
-    return model
-
-
 def build_comb_lstm_att( hidden=8, features=100, predict_n=4, look_back=4, loss='msle', stateful = False, batch_size = 1,
                 optimizer = Adam(learning_rate=0.001), activation = 'relu'):
 
@@ -331,11 +276,13 @@ def build_comb_lstm_att( hidden=8, features=100, predict_n=4, look_back=4, loss=
         #shape=(look_back, features),
         batch_shape=(batch_size, look_back, features))
     
-    att = SeqSelfAttention(attention_type=SeqSelfAttention.ATTENTION_TYPE_MUL,
-                       kernel_regularizer=keras.regularizers.l2(1e-4),
-                       bias_regularizer=keras.regularizers.l1(1e-4),
-                       attention_regularizer_weight=1e-4,
-                       name='Attention')(inp, training = True )
+    att = MultiHeadAttention(
+                        num_heads =  features, 
+                        key_dim = features,
+                        value_dim = features,
+                        name='Multi-Head',
+                        #activation='sigmoid',
+                    )(inp, inp, inp, training = True)
 
     att = Dropout(0.2)(att, training=True) 
 
@@ -372,7 +319,7 @@ def build_comb_lstm_att( hidden=8, features=100, predict_n=4, look_back=4, loss=
         hidden,
         input_shape=(look_back, features),
         stateful = stateful,
-        activation = gelu,
+        #activation = gelu,
         return_sequences=False,
     )(lstm_2_1, training=True)
 
@@ -440,6 +387,7 @@ def build_lstm_att( hidden=8, features=100, predict_n=4, look_back=4, loss='msle
     print(model.summary())
     return model
 
+
 def build_lstm_att_2( hidden=8, features=100, predict_n=4, look_back=4, loss='msle', stateful = False, batch_size = 1,
                 optimizer = Adam(learning_rate=0.001), activation = 'relu'):
 
@@ -447,23 +395,11 @@ def build_lstm_att_2( hidden=8, features=100, predict_n=4, look_back=4, loss='ms
         #shape=(look_back, features),
         batch_shape=(batch_size, look_back, features))
     
-    x = LSTM(
-        hidden,
-        input_shape=(look_back, features),
-        stateful = stateful,
-        
-        return_sequences=True,
-    )(inp, training=True)
-
-    x = Dropout(0.2)(x, training=True)
-
-    x = SeqSelfAttention(attention_type=SeqSelfAttention.ATTENTION_TYPE_MUL,
-                       kernel_regularizer=keras.regularizers.l2(1e-4),
-                       bias_regularizer=keras.regularizers.l1(1e-4),
-                       attention_regularizer_weight=1e-4,
-                       name='Attention')(x, training = True )
+    x = AdditiveAttention(name='Attention')([inp,inp], training = True )
     
     x = Dropout(0.2)(x, training=True)
+
+    x = Concatenate(axis=-1)([x, inp])
 
     x = LSTM(
         hidden,
@@ -488,27 +424,80 @@ def build_lstm_att_2( hidden=8, features=100, predict_n=4, look_back=4, loss='ms
     return model
 
 
+
 def build_lstm_att_3( hidden=8, features=100, predict_n=4, look_back=4, loss='msle', stateful = False, batch_size = 1,
                 optimizer = Adam(learning_rate=0.001), activation = 'relu'):
 
     inp = keras.Input(
         #shape=(look_back, features),
         batch_shape=(batch_size, look_back, features))
-
-    x = SeqSelfAttention(attention_type=SeqSelfAttention.ATTENTION_TYPE_MUL,
-                       kernel_regularizer=keras.regularizers.l2(1e-4),
-                       bias_regularizer=keras.regularizers.l1(1e-4),
-                       attention_regularizer_weight=1e-4,
-                       name='Attention')(inp, training = True )
+    
+    x  = MultiHeadAttention(
+                        num_heads = features, 
+                        key_dim = features,
+                        value_dim = features,
+                        name='Multi-Head',
+                        #activation='sigmoid',
+                    )(inp, inp, inp, training = True)
     
     x = Dropout(0.2)(x, training=True)
+
+    x = Concatenate(axis=-1)([x, inp])
+
+    x = LSTM(
+        hidden,
+        input_shape=(look_back, features),
+        stateful = stateful,
+        #activation = gelu, 
+        return_sequences=False,
+    )(x, training=True)  
     
-    flatten = tf.keras.layers.Flatten()(x)
+    x = Dropout(0.2)(x, training=True)
 
     out = Dense(
         predict_n,
         activation=activation
-    )(flatten)
+    )(x)
+  
+    model = keras.Model(inp, out)
+
+    #optimizer = RMSprop(learning_rate=0.001, momentum= 0.5)
+    model.compile(loss=loss, optimizer=optimizer, metrics=["accuracy", "mape", "mse"])
+    print(model.summary())
+    return model
+
+
+def build_att_lstm( hidden=8, features=100, predict_n=4, look_back=4, loss='msle', stateful = False, batch_size = 1,
+                optimizer = Adam(learning_rate=0.001), activation = 'relu'):
+
+    inp = keras.Input(
+        #shape=(look_back, features),
+        batch_shape=(batch_size, look_back, features))
+
+    x = LSTM(
+        hidden,
+        input_shape=(look_back, features),
+        stateful = stateful,
+        #activation = gelu, 
+        #return_sequences=True,
+    )(inp, training=True)  
+    
+    x = Dropout(0.2)(x, training=True)
+
+    x  = MultiHeadAttention(
+                        num_heads = features, 
+                        key_dim = features,
+                        value_dim = features,
+                        name='Multi-Head',
+                        #activation='sigmoid',
+                    )(x, x, x, training = True)
+    
+    x = Dropout(0.2)(x, training=True)
+
+    out = Dense(
+        predict_n,
+        activation=activation
+    )(x)
   
     model = keras.Model(inp, out)
 
