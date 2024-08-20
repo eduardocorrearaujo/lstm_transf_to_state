@@ -692,7 +692,7 @@ def make_predictions(model, X_test, norm, dates):
 
     return df_preds[['dates', 'lower', 'preds', 'upper']]
 
-def sum_regions_predictions(model, df, enso, test_year, columns_to_normalize, episcanner = True, clima = True):
+def sum_regions_predictions(model, df, enso, test_year, columns_to_normalize, episcanner = True, clima = True, percentile_90 = False):
     '''
     Função que aplica o modelo para todas as regionais de saúde e retorna a soma,
     que representa a função para o estado no formato de um dataframe. Não sei se existem formas de
@@ -741,8 +741,13 @@ def sum_regions_predictions(model, df, enso, test_year, columns_to_normalize, ep
         predicted = predicted + predicted_
 
     df_pred = pd.DataFrame(np.percentile(predicted, 50, axis=2))
-    df_pred25 = pd.DataFrame(np.percentile(predicted, 2.5, axis=2))
-    df_pred975 = pd.DataFrame(np.percentile(predicted, 97.5, axis=2))
+    if percentile_90:
+        df_pred25 = pd.DataFrame(np.percentile(predicted, 5, axis=2))
+        df_pred975 = pd.DataFrame(np.percentile(predicted, 95, axis=2))
+
+    else: 
+        df_pred25 = pd.DataFrame(np.percentile(predicted, 2.5, axis=2))
+        df_pred975 = pd.DataFrame(np.percentile(predicted, 97.5, axis=2))
 
     df_preds = pd.DataFrame()
 

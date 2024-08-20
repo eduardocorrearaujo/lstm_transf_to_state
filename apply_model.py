@@ -15,25 +15,31 @@ warnings.simplefilter(action='ignore', category=pd.errors.SettingWithCopyWarning
 This script is used to train the model for a specific STATE and forecast the cases on a 
 specific year (TEST_YEAR). The model is trained  with the regional health data before the year selected. 
 '''
-STATE = 'CE'
-TEST_YEAR = 2024
-MODEL_NAME = 'baseline'
 
 df_all = prep.load_cases_data()
 enso = prep.load_enso_data()
 
-df = df_all.loc[df_all.uf == STATE]
+for state, model_name in zip(['PR'], 
+                        ['baseline']):
+    
+    print(state)
+    print(model_name)
+    
+    for year in [2023, 2024]:
+        print(year)
 
-cols_to_norm = ['casos','epiweek', 'enso',  'R0', 'total_cases',
-                          'peak_week', 'perc_geocode'] 
+        df = df_all.loc[df_all.uf == state]
 
-# save the model
-model = load_model(f'./saved_models/model_{STATE}_{TEST_YEAR-1}_{MODEL_NAME}.keras')
+        cols_to_norm = ['casos','epiweek', 'enso']#,  'R0', 'total_cases',
+                                #'peak_week', 'perc_geocode'] 
 
-df_preds = sum_regions_predictions(model, df, enso, TEST_YEAR, cols_to_norm, episcanner=True, 
-                                                                        clima = False)
-df_preds['adm_1'] = STATE
-df_preds['adm_0'] = 'BR'
-df_preds['adm_2'] = pd.NA
+        # save the model
+        model = load_model(f'./saved_models/model_{state}_{year-1}_{model_name}.keras')
 
-df_preds.to_csv(f'./predictions/preds_{STATE}_{TEST_YEAR}_{MODEL_NAME}.csv', index = False)
+        df_preds = sum_regions_predictions(model, df, enso, year, cols_to_norm, episcanner=True, 
+                                                                                clima = False, percentile_90 = True)
+        df_preds['adm_1'] = state
+        df_preds['adm_0'] = 'BR'
+        df_preds['adm_2'] = pd.NA
+
+        df_preds.to_csv(f'./predictions/preds_90_{state}_{year}_{model_name}.csv', index = False)
