@@ -20,11 +20,11 @@ df_all = prep.load_cases_data()
 enso = prep.load_enso_data()
 
 # flag to decide if the model will be applied or not
-apply = True 
+apply = False
 
 start_time = time.time()  
 
-for STATE in ['AM', 'CE', 'GO', 'PR', 'MG']:
+for STATE in ['BA']:
 
     TEST_YEAR = 2023 
 
@@ -37,8 +37,8 @@ for STATE in ['AM', 'CE', 'GO', 'PR', 'MG']:
         min_year = 2013
 
     #columns used in the model
-    cols_to_norm = ['casos','epiweek', 'enso',  'R0', 'total_cases',
-                          'peak_week', 'perc_geocode'] 
+    cols_to_norm = ['casos','epiweek', 'enso']#,  'R0', 'total_cases',
+                         # 'peak_week', 'perc_geocode'] 
 
     #cols_to_norm = ['casos','epiweek', 'enso', 'ampsas', 'amptrend', 'ST', 'R0', 'total_cases',
      #                       'peak_week', 'perc_geocode']
@@ -53,13 +53,13 @@ for STATE in ['AM', 'CE', 'GO', 'PR', 'MG']:
                                                             min_year = min_year)
 
     # parameters of the model
-    LOSS = 'mse'
+    LOSS = 'msle'
     batch_size = 4
-    model_name = 'comb_att_n'
+    model_name = 'baseline'
 
     #create model
-    model = build_comb_lstm_att(hidden=64, features=8, predict_n=52, look_back=89, loss=LOSS, 
-                    stateful = False, batch_size = batch_size,  optimizer = 'adam', activation = 'relu')
+    model = build_baseline(hidden=64, features=4, predict_n=52, look_back=89, loss=LOSS, 
+                    stateful = False, batch_size = batch_size,  optimizer = 'adam', activation = 'sigmoid')
 
     # train model 
     model = train_model_using_cross_val(model, X_train, y_train, n_splits=4, epochs = 150,
@@ -108,9 +108,11 @@ for STATE in ['AM', 'CE', 'GO', 'PR', 'MG']:
 
     #lr_scheduler = LearningRateScheduler(schedule)
 
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size = 0.2, random_state=42)
 
-    hist = model.fit(
+    if STATE != 'DF':
+        X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size = 0.2, random_state=42)
+
+        hist = model.fit(
                     X_train,
                     y_train,
                     batch_size=batch_size,
@@ -120,15 +122,17 @@ for STATE in ['AM', 'CE', 'GO', 'PR', 'MG']:
                     callbacks=[TB_callback, EarlyStopping(monitor='val_loss',
                                                            min_delta=0, patience=15)]
                 )
+        
+    else: 
+        hist = model.fit(
+                X_train,
+                y_train,
+                batch_size=1,
+                epochs=100,
+               verbose=0,
+                callbacks=[TB_callback, EarlyStopping(monitor='loss', min_delta=0, patience=10)]
+            )
     
-    #hist = model.fit(
-    #            X_train,
-    #            y_train,
-    #            batch_size=4,
-    #            epochs=100,
-    #            verbose=0,
-    #            callbacks=[TB_callback, EarlyStopping(monitor='loss', min_delta=0, patience=20)]
-    #        )
 
     # save the model
     model.save(f'saved_models/model_{STATE}_{TEST_YEAR-1}_{model_name}.keras')

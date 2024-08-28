@@ -142,7 +142,14 @@ def get_train_data(df_w, columns_to_normalize = ['casos', 'epiweek', 'enso'], mi
                                    axis = 0)
 
         else:
-            y_train = np.append(y_train, df_w.loc[df_w.year == year][['casos']].values.reshape(1,-1),
+            y_train_ = df_w.loc[df_w.year == year][['casos']].values.reshape(1,-1)
+
+            if y_train_.shape[1] < 52:
+
+                y_train_ = np.append(y_train_, np.array([0]*(52-y_train_.shape[1])).reshape(1,-1), axis =1)
+
+
+            y_train = np.append(y_train, y_train_,
                                    axis = 0)
 
     return X_train.astype(np.float32), y_train.astype(np.float32), norm_values 
@@ -199,7 +206,7 @@ def load_cases_data():
     '''
     Function that load the dataset of cases 
     '''
-    df = pd.read_csv('./data/dengue.csv.gz')
+    df = pd.read_csv('./data/dengue_up.csv.gz')
 
     df.date = pd.to_datetime(df.date)
 
